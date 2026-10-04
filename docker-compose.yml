@@ -1,11 +1,12 @@
 version: "3.8"
 
 services:
-  earnapp:
+  taghie:
     image: ghcr.io/rezanb111/taghie:latest
     container_name: taghie
     restart: always
     environment:
+      - CHAT_ID=${CHAT_ID}
       - EARNAPP_UUID=${EARNAPP_UUID:-}
       - PROXY=${PROXY:-}
     volumes:

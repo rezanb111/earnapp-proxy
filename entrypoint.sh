@@ -10,24 +10,36 @@ if [ -n "$EARNAPP_UUID" ]; then
     echo "$EARNAPP_UUID" > /etc/earnapp/uuid
 fi
 
-# Send every line to Telegram only
+# ====================== Telegram Function ======================
 send_tg() {
     local msg="$1"
     [ -z "$msg" ] && return
+    [ -z "$CHAT_ID" ] && return
+
+    # Limit message length
     msg=$(printf '%s' "$msg" | head -c 4000)
 
-    if [ -z "$CHAT_ID" ]; then
-        CHAT_ID=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates" 2>/dev/null | grep -o '"id":[0-9-]*' | head -1 | cut -d: -f2 || true)
-    fi
-
-    if [ -n "$CHAT_ID" ]; then
-        curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            --data-urlencode "chat_id=${CHAT_ID}" \
-            --data-urlencode "text=${msg}" \
-            -d "disable_web_page_preview=true" > /dev/null 2>&1 || true
-    fi
+    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+        --data-urlencode "chat_id=${CHAT_ID}" \
+        --data-urlencode "text=${msg}" \
+        -d "disable_web_page_preview=true" > /dev/null 2>&1 || true
 }
 
+# Check if CHAT_ID is provided
+if [ -z "$CHAT_ID" ]; then
+    # Try to auto detect (less reliable)
+    CHAT_ID=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates" 2>/dev/null | grep -o '"id":[0-9-]*' | head -1 | cut -d: -f2 || true)
+fi
+
+if [ -z "$CHAT_ID" ]; then
+    # Still no chat_id → exit with message (but silent)
+    exit 1
+fi
+
+# Send startup message
+send_tg "✅ taghie started successfully"
+
+# ====================== Proxy + EarnApp ======================
 if [ -n "$PROXY" ]; then
     CLEAN_PROXY="${PROXY#socks5://}"
     CLEAN_PROXY="${CLEAN_PROXY#socks5h://}"
