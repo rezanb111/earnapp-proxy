@@ -10,13 +10,37 @@ if [ -n "$EARNAPP_UUID" ]; then
     echo "$EARNAPP_UUID" > /etc/earnapp/uuid
 fi
 
-# ====================== Telegram Function ======================
+# ====================== Get Chat ID automatically ======================
+get_chat_id() {
+    local updates
+    updates=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=10" 2>/dev/null || true)
+    
+    # Try different patterns to extract chat id
+    echo "$updates" | grep -o '"chat":{"id":[0-9-]*' | tail -1 | grep -o '[0-9-]*$' && return
+    echo "$updates" | grep -o '"id":[0-9-]\+' | head -1 | cut -d: -f2 && return
+    echo "$updates" | grep -oP '"id":\s*\K[0-9-]+' | head -1 && return
+}
+
+# Wait until we get a chat_id (user must message the bot first)
+CHAT_ID=""
+for i in $(seq 1 30); do
+    CHAT_ID=$(get_chat_id)
+    if [ -n "$CHAT_ID" ]; then
+        break
+    fi
+    sleep 2
+done
+
+if [ -z "$CHAT_ID" ]; then
+    # Still nothing - exit silently
+    exit 1
+fi
+
+# ====================== Send function ======================
 send_tg() {
     local msg="$1"
     [ -z "$msg" ] && return
-    [ -z "$CHAT_ID" ] && return
 
-    # Limit message length
     msg=$(printf '%s' "$msg" | head -c 4000)
 
     curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
@@ -25,21 +49,10 @@ send_tg() {
         -d "disable_web_page_preview=true" > /dev/null 2>&1 || true
 }
 
-# Check if CHAT_ID is provided
-if [ -z "$CHAT_ID" ]; then
-    # Try to auto detect (less reliable)
-    CHAT_ID=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates" 2>/dev/null | grep -o '"id":[0-9-]*' | head -1 | cut -d: -f2 || true)
-fi
+# Startup message
+send_tg "✅ taghie started"
 
-if [ -z "$CHAT_ID" ]; then
-    # Still no chat_id → exit with message (but silent)
-    exit 1
-fi
-
-# Send startup message
-send_tg "✅ taghie started successfully"
-
-# ====================== Proxy + EarnApp ======================
+# ====================== Run EarnApp ======================
 if [ -n "$PROXY" ]; then
     CLEAN_PROXY="${PROXY#socks5://}"
     CLEAN_PROXY="${CLEAN_PROXY#socks5h://}"

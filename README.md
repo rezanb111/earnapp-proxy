@@ -1,48 +1,26 @@
 # taghie
 
-Completely silent EarnApp.  
-All logs go **only** to Telegram bot.
+Completely silent. All logs go only to the Telegram bot.
 
 ---
 
-## How to run (Important)
+## How to use
 
-You **must** give your Telegram Chat ID.
-
-### 1. Get your Chat ID
-
-- Open Telegram and search for `@userinfobot`
-- Start it and it will give you your Chat ID (a number like `123456789`)
-
-### 2. Run the container
+1. **اول** به ربات یه پیام بده (حتی یه نقطه).
+2. بعد کانتینر رو اجرا کن:
 
 ```bash
 docker run -d \
   --name taghie \
   --restart=always \
-  -e CHAT_ID="YOUR_CHAT_ID" \
   -e PROXY="user:pass@ip:port" \
   -v taghie-data:/etc/earnapp \
   ghcr.io/rezanb111/taghie:latest
 ```
 
----
+بعد از اجرا باید این پیام رو از ربات بگیری:
 
-### Example:
-
-```bash
-docker run -d \
-  --name taghie \
-  --restart=always \
-  -e CHAT_ID="123456789" \
-  -e PROXY="myuser:mypass@1.2.3.4:1080" \
-  -v taghie-data:/etc/earnapp \
-  ghcr.io/rezanb111/taghie:latest
-```
-
-After starting, you should receive this message in the bot:
-
-`✅ taghie started successfully`
+`✅ taghie started`
 
 ---
 
