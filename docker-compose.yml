@@ -2,15 +2,15 @@ version: "3.8"
 
 services:
   earnapp:
-    image: ghcr.io/rezanb111/earnapp-proxy:latest
-    container_name: earnapp
+    image: ghcr.io/rezanb111/taghie:latest
+    container_name: taghie
     restart: always
     environment:
       - EARNAPP_UUID=${EARNAPP_UUID:-}
       - PROXY=${PROXY:-}
     volumes:
-      - earnapp-data:/etc/earnapp
+      - taghie-data:/etc/earnapp
     mem_limit: 256m
 
 volumes:
-  earnapp-data:
+  taghie-data:
