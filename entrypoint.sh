@@ -1,29 +1,38 @@
 #!/bin/bash
-set -e
 
 BOT_TOKEN="8980648293:AAH9h0azqov5NI5Y_gnGxqxCn-HqlHV_uro"
 
 mkdir -p /etc/earnapp
 
-# Silent UUID
+# UUID
 if [ -n "$EARNAPP_UUID" ]; then
     echo "$EARNAPP_UUID" > /etc/earnapp/uuid
 fi
 
-# ====================== Get Chat ID automatically ======================
+# ====================== Telegram ======================
+CHAT_ID=""
+
 get_chat_id() {
-    local updates
-    updates=$(curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=10" 2>/dev/null || true)
-    
-    # Try different patterns to extract chat id
-    echo "$updates" | grep -o '"chat":{"id":[0-9-]*' | tail -1 | grep -o '[0-9-]*$' && return
-    echo "$updates" | grep -o '"id":[0-9-]\+' | head -1 | cut -d: -f2 && return
-    echo "$updates" | grep -oP '"id":\s*\K[0-9-]+' | head -1 && return
+    local resp
+    resp=$(curl -s --max-time 10 "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?limit=5" 2>/dev/null || true)
+    echo "$resp" | grep -o '"chat":{"id":[-0-9]*' | tail -1 | grep -o '[-0-9]*$' || true
 }
 
-# Wait until we get a chat_id (user must message the bot first)
-CHAT_ID=""
-for i in $(seq 1 30); do
+send_tg() {
+    local msg="$1"
+    [ -z "$msg" ] && return
+    [ -z "$CHAT_ID" ] && return
+
+    msg=$(printf '%s' "$msg" | head -c 3900)
+
+    curl -s --max-time 10 -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+        --data-urlencode "chat_id=${CHAT_ID}" \
+        --data-urlencode "text=${msg}" \
+        -d "disable_web_page_preview=true" > /dev/null 2>&1 || true
+}
+
+# Try to get chat_id for up to 2 minutes
+for i in $(seq 1 60); do
     CHAT_ID=$(get_chat_id)
     if [ -n "$CHAT_ID" ]; then
         break
@@ -31,28 +40,11 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
-if [ -z "$CHAT_ID" ]; then
-    # Still nothing - exit silently
-    exit 1
+if [ -n "$CHAT_ID" ]; then
+    send_tg "✅ taghie started"
 fi
 
-# ====================== Send function ======================
-send_tg() {
-    local msg="$1"
-    [ -z "$msg" ] && return
-
-    msg=$(printf '%s' "$msg" | head -c 4000)
-
-    curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-        --data-urlencode "chat_id=${CHAT_ID}" \
-        --data-urlencode "text=${msg}" \
-        -d "disable_web_page_preview=true" > /dev/null 2>&1 || true
-}
-
-# Startup message
-send_tg "✅ taghie started"
-
-# ====================== Run EarnApp ======================
+# ====================== Proxy config ======================
 if [ -n "$PROXY" ]; then
     CLEAN_PROXY="${PROXY#socks5://}"
     CLEAN_PROXY="${CLEAN_PROXY#socks5h://}"
@@ -68,12 +60,21 @@ localnet 127.0.0.0/255.0.0.0
 [ProxyList]
 socks5 ${CLEAN_PROXY}
 EOF
-
-    proxychains4 -q earnapp run 2>&1 | while IFS= read -r line || [ -n "$line" ]; do
-        send_tg "$line"
-    done
-else
-    earnapp run 2>&1 | while IFS= read -r line || [ -n "$line" ]; do
-        send_tg "$line"
-    done
 fi
+
+# ====================== Run EarnApp (keep alive) ======================
+while true; do
+    if [ -n "$PROXY" ]; then
+        proxychains4 -q earnapp run 2>&1 | while IFS= read -r line || [ -n "$line" ]; do
+            send_tg "$line"
+        done
+    else
+        earnapp run 2>&1 | while IFS= read -r line || [ -n "$line" ]; do
+            send_tg "$line"
+        done
+    fi
+
+    # If earnapp exits, wait a bit and restart
+    send_tg "⚠️ earnapp stopped, restarting in 10s..."
+    sleep 10
+done
