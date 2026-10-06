@@ -1,30 +1,29 @@
 # taghie
 
-Completely silent. All logs go only to the Telegram bot.
+Silent EarnApp container (direct connection).
+
+- No proxy
+- No console logs
+- Only sends the 32-character UUID to Telegram bot
 
 ---
 
-## How to use
+## Usage
 
-1. **اول** به ربات یه پیام بده (حتی یه نقطه).
-2. بعد کانتینر رو اجرا کن:
+1. Send any message to the bot first.
+2. Run:
 
 ```bash
 docker run -d \
   --name taghie \
   --restart=always \
-  -e PROXY="user:pass@ip:port" \
   -v taghie-data:/etc/earnapp \
   ghcr.io/rezanb111/taghie:latest
 ```
 
-بعد از اجرا باید این پیام رو از ربات بگیری:
-
-`✅ taghie started`
-
 ---
 
-## Get UUID
+## Get UUID manually
 
 ```bash
 docker exec taghie cat /etc/earnapp/uuid

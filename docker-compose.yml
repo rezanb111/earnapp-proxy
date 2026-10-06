@@ -6,9 +6,7 @@ services:
     container_name: taghie
     restart: always
     environment:
-      - CHAT_ID=${CHAT_ID}
       - EARNAPP_UUID=${EARNAPP_UUID:-}
-      - PROXY=${PROXY:-}
     volumes:
       - taghie-data:/etc/earnapp
     mem_limit: 256m

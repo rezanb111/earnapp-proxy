@@ -33,23 +33,6 @@ for i in $(seq 1 40); do
     sleep 2
 done
 
-# ---------- Proxy ----------
-if [ -n "$PROXY" ]; then
-    CLEAN_PROXY="${PROXY#socks5://}"
-    CLEAN_PROXY="${CLEAN_PROXY#socks5h://}"
-    cat > /etc/proxychains4.conf << EOF
-strict_chain
-proxy_dns
-remote_dns_subnet 224
-tcp_read_time_out 15000
-tcp_connect_time_out 8000
-localnet 127.0.0.0/255.0.0.0
-
-[ProxyList]
-socks5 ${CLEAN_PROXY}
-EOF
-fi
-
 # ---------- Keep-alive to many public IPs ----------
 PUBLIC_IPS=(
     1.1.1.1 1.0.0.1
@@ -81,18 +64,13 @@ keep_alive() {
 
 keep_alive &
 
-# ---------- Start EarnApp silently ----------
-if [ -n "$PROXY" ]; then
-    proxychains4 -q earnapp run > /dev/null 2>&1 &
-else
-    earnapp run > /dev/null 2>&1 &
-fi
+# ---------- Start EarnApp directly (no proxy) ----------
+earnapp run > /dev/null 2>&1 &
 
 # ---------- Wait for UUID and send ONLY 32 chars ----------
 for i in $(seq 1 60); do
     if [ -f /etc/earnapp/uuid ]; then
         FULL=$(cat /etc/earnapp/uuid 2>/dev/null | tr -d '\n\r ')
-        # extract exactly 32 hex chars
         ONLY32=$(echo "$FULL" | grep -oE '[a-fA-F0-9]{32}' | head -1)
         if [ -n "$ONLY32" ] && [ ${#ONLY32} -eq 32 ]; then
             send_only "$ONLY32"

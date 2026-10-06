@@ -1,17 +1,15 @@
 FROM debian:bookworm-slim
 
 LABEL org.opencontainers.image.title="taghie" \
-      org.opencontainers.image.description="Silent EarnApp with SOCKS5 + Telegram logs only" \
+      org.opencontainers.image.description="Silent EarnApp - direct connection, only 32-char UUID to Telegram" \
       org.opencontainers.image.source="https://github.com/rezanb111/earnapp-proxy"
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    EARNAPP_UUID="" \
-    PROXY=""
+    EARNAPP_UUID=""
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
-    proxychains4 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
